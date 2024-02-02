@@ -1,5 +1,6 @@
 # system files
 .DS_Store
+._*
 
 # Binaries for programs and plugins
 *.exe
@@ -20,3 +21,7 @@
 # editor config
 .idea/
 .vscode
+
+# Go workspace file
+go.work
+go.work.sum
