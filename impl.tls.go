@@ -250,7 +250,7 @@ type tlsServer struct {
 
 func (t *tlsServer) Type() string { return TypeTls }
 
-func (t *tlsServer) Config() interface{} { return &t.TlsConfig }
+func (t *tlsServer) Config() any { return &t.TlsConfig }
 
 func (t *tlsServer) Addr() Addr { return t.upstream.Addr() }
 
@@ -314,7 +314,7 @@ func (tl *tlsListener) Config() *tls.Config { return tl.config }
 
 func (tl *tlsListener) TLSConfig() *tls.Config { return tl.config }
 
-func (tl *tlsListener) Underlying() interface{} { return tl.Listener }
+func (tl *tlsListener) Underlying() any { return tl.Listener }
 
 func (tl *tlsListener) Upstream() Listener { return tl.upstream }
 
@@ -327,7 +327,7 @@ type tlsClient struct {
 
 func (t *tlsClient) Type() string { return TypeTls }
 
-func (t *tlsClient) Config() interface{} { return &t.TlsConfig }
+func (t *tlsClient) Config() any { return &t.TlsConfig }
 
 func (t *tlsClient) Upstream() Client { return t.upstream }
 
@@ -398,6 +398,6 @@ func (td *tlsDialer) Client() Client { return td.client }
 
 func (td *tlsDialer) Name() string { return TypeTls }
 
-func (td *tlsDialer) Underlying() interface{} { return td.Dialer }
+func (td *tlsDialer) Underlying() any { return td.Dialer }
 
 func (td *tlsDialer) Upstream() Dialer { return td.upstream }

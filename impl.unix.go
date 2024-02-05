@@ -7,14 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
-const (
-	TypeUnix = "unix"
-
-	UNIXDefaultKeepAliveInterval = time.Second * 15
-)
+const TypeUnix = "unix"
 
 // ============================== Server ==============================
 
@@ -33,7 +28,7 @@ func socketFileStat(path string) (string, os.FileInfo, error) {
 
 func removeSocketFile(path string) error {
 	if fullPath, fileInfo, err := socketFileStat(path); err == nil && fileInfo != nil && !fileInfo.IsDir() {
-		if err = os.Remove(fullPath); err != nil {
+		if err = os.RemoveAll(fullPath); err != nil {
 			return err
 		}
 	}
@@ -42,15 +37,14 @@ func removeSocketFile(path string) error {
 
 type UnixServerConfig struct {
 	RemoveBeforeServe bool     `json:"remove_before_serve"`
-	EnableKeepAlive   bool     `json:"enable_keep_alive"`
-	KeepAliveInterval duration `json:"keep_alive_interval"`
+	KeepAliveInterval Duration `json:"keep_alive_interval"`
 }
 
 func (tc *UnixServerConfig) applyToListenConfig(lc *net.ListenConfig) error {
-	if tc.EnableKeepAlive {
-		lc.KeepAlive = fallback(tc.KeepAliveInterval.Duration(), UNIXDefaultKeepAliveInterval)
-	} else {
-		lc.KeepAlive = -1
+	if keepAliveDuration := tc.KeepAliveInterval.Duration(); keepAliveDuration > 0 {
+		lc.KeepAlive = keepAliveDuration // enable
+	} else if keepAliveDuration < 0 {
+		lc.KeepAlive = -1 // disable
 	}
 	return nil
 }
@@ -64,7 +58,7 @@ func (u *unixServer) Type() string { return TypeUnix }
 
 func (u *unixServer) Addr() Addr { return u.addr }
 
-func (u *unixServer) Config() interface{} { return &u.config }
+func (u *unixServer) Config() any { return &u.config }
 
 func (u *unixServer) Upstream() Server { return nil }
 
@@ -117,7 +111,7 @@ func (ul *unixListener) Addr() net.Addr { return &ul.server.addr }
 
 func (ul *unixListener) Server() Server { return ul.server }
 
-func (ul *unixListener) Underlying() interface{} { return ul.Listener }
+func (ul *unixListener) Underlying() any { return ul.Listener }
 
 type unixPacketListener struct {
 	server *unixServer
@@ -126,25 +120,24 @@ type unixPacketListener struct {
 
 func (ul *unixPacketListener) Addr() net.Addr { return &ul.server.addr }
 
-func (ul *unixPacketListener) Underlying() interface{} { return ul.UnixConn }
+func (ul *unixPacketListener) Underlying() any { return ul.UnixConn }
 
 // ============================== Client ==============================
 
 type UnixClientConfig struct {
 	RemoveBeforeServe bool     `json:"remove_before_serve"`
-	EnableKeepAlive   bool     `json:"enable_keep_alive"`
-	KeepAliveInterval duration `json:"keep_alive_interval"`
-	StackFallbackGap  duration `json:"stack_fallback_gap"`
-	TimeoutDuration   duration `json:"dial_timeout"`
+	KeepAliveInterval Duration `json:"keep_alive_interval"`
+	StackFallbackGap  Duration `json:"stack_fallback_gap"`
+	TimeoutDuration   Duration `json:"dial_timeout"`
 	LocalNetwork      string   `json:"local_network"`
 	LocalAddress      string   `json:"local_address"`
 }
 
 func (uc *UnixClientConfig) applyToDialer(dialer *net.Dialer) error {
-	if uc.EnableKeepAlive {
-		dialer.KeepAlive = uc.KeepAliveInterval.Duration()
-	} else {
-		dialer.KeepAlive = -1
+	if keepAliveDuration := uc.KeepAliveInterval.Duration(); keepAliveDuration > 0 {
+		dialer.KeepAlive = keepAliveDuration // enable
+	} else if keepAliveDuration < 0 {
+		dialer.KeepAlive = -1 // disable
 	}
 	dialer.Timeout = uc.TimeoutDuration.Duration()
 	dialer.FallbackDelay = uc.StackFallbackGap.Duration()
@@ -155,10 +148,10 @@ func (uc *UnixClientConfig) applyToDialer(dialer *net.Dialer) error {
 }
 
 func (uc *UnixClientConfig) applyToListenConfig(lc *net.ListenConfig) error {
-	if uc.EnableKeepAlive {
-		lc.KeepAlive = uc.KeepAliveInterval.Duration()
-	} else {
-		lc.KeepAlive = -1
+	if keepAliveDuration := uc.KeepAliveInterval.Duration(); keepAliveDuration > 0 {
+		lc.KeepAlive = keepAliveDuration // enable
+	} else if keepAliveDuration < 0 {
+		lc.KeepAlive = -1 // disable
 	}
 	return nil
 }
@@ -169,7 +162,7 @@ type unixClient struct {
 
 func (u *unixClient) Type() string { return TypeUnix }
 
-func (u *unixClient) Config() interface{} { return &u.config }
+func (u *unixClient) Config() any { return &u.config }
 
 func (u *unixClient) Upstream() Client { return nil }
 
@@ -224,4 +217,4 @@ type unixDialer struct {
 
 func (ud *unixDialer) Client() Client { return ud.client }
 
-func (ud *unixDialer) Underlying() interface{} { return ud.Dialer }
+func (ud *unixDialer) Underlying() any { return ud.Dialer }

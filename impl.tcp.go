@@ -3,34 +3,28 @@ package network
 import (
 	"context"
 	"net"
-	"time"
 )
 
-const (
-	TypeTCP = "tcp"
-
-	TCPDefaultKeepAliveInterval = time.Second * 15
-)
+const TypeTCP = "tcp"
 
 // ============================== Server ==============================
 
 type TCPServerConfig struct {
 	EnableNoDelay     bool     `json:"enable_no_delay" yaml:"enable_no_delay"`
-	EnableKeepAlive   bool     `json:"enable_keep_alive" yaml:"enable_keep_alive"`
-	KeepAliveInterval duration `json:"keep_alive_interval" yaml:"keep_alive_interval"`
+	KeepAliveInterval Duration `json:"keep_alive_interval" yaml:"keep_alive_interval"`
 }
 
 func (tc *TCPServerConfig) applyToListenConfig(lc *net.ListenConfig) error {
-	if tc.EnableKeepAlive {
-		lc.KeepAlive = fallback(tc.KeepAliveInterval.Duration(), TCPDefaultKeepAliveInterval)
-	} else {
-		lc.KeepAlive = -1
+	if keepAliveDuration := tc.KeepAliveInterval.Duration(); keepAliveDuration > 0 {
+		lc.KeepAlive = keepAliveDuration // enable
+	} else if keepAliveDuration < 0 {
+		lc.KeepAlive = -1 // disable
 	}
 	return nil
 }
 
 func NewTCPServer(cfg TCPServerConfig, addr string) Server {
-	return &tcpServer{config: cfg, addr: NewAddr("tcp", addr)}
+	return &tcpServer{config: cfg, addr: NewAddr(TypeTCP, addr)}
 }
 
 type tcpServer struct {
@@ -42,7 +36,7 @@ func (t *tcpServer) Type() string { return TypeTCP }
 
 func (t *tcpServer) Addr() Addr { return t.addr }
 
-func (t *tcpServer) Config() interface{} { return &t.config }
+func (t *tcpServer) Config() any { return &t.config }
 
 func (t *tcpServer) Upstream() Server { return nil }
 
@@ -70,7 +64,7 @@ type tcpListener struct {
 
 func (tl *tcpListener) Server() Server { return tl.server }
 
-func (tl *tcpListener) Underlying() interface{} { return tl.Listener }
+func (tl *tcpListener) Underlying() any { return tl.Listener }
 
 func (tl *tcpListener) Accept() (conn net.Conn, err error) {
 	conn, err = tl.Listener.Accept()
@@ -95,19 +89,18 @@ func (tl *tcpListener) connInit(conn net.Conn) (err error) {
 
 type TCPClientConfig struct {
 	EnableNoDelay     bool     `json:"enable_no_delay" yaml:"enable_no_delay"`
-	EnableKeepAlive   bool     `json:"enable_keep_alive" yaml:"enable_keep_alive"`
-	KeepAliveInterval duration `json:"keep_alive_interval" yaml:"keep_alive_interval"`
-	StackFallbackGap  duration `json:"stack_fallback_gap" yaml:"stack_fallback_gap"`
-	TimeoutDuration   duration `json:"dial_timeout" yaml:"dial_timeout"`
+	KeepAliveInterval Duration `json:"keep_alive_interval" yaml:"keep_alive_interval"`
+	StackFallbackGap  Duration `json:"stack_fallback_gap" yaml:"stack_fallback_gap"`
+	TimeoutDuration   Duration `json:"dial_timeout" yaml:"dial_timeout"`
 	LocalNetwork      string   `json:"local_network" yaml:"local_network"`
 	LocalAddress      string   `json:"local_address" yaml:"local_address"`
 }
 
 func (tc *TCPClientConfig) applyToDialer(dialer *net.Dialer) error {
-	if tc.EnableKeepAlive {
-		dialer.KeepAlive = fallback(tc.KeepAliveInterval.Duration(), TCPDefaultKeepAliveInterval)
-	} else {
-		dialer.KeepAlive = -1
+	if keepAliveDuration := tc.KeepAliveInterval.Duration(); keepAliveDuration > 0 {
+		dialer.KeepAlive = keepAliveDuration // enable
+	} else if keepAliveDuration < 0 {
+		dialer.KeepAlive = -1 // disable
 	}
 	dialer.Timeout = tc.TimeoutDuration.Duration()
 	dialer.FallbackDelay = tc.StackFallbackGap.Duration()
@@ -127,7 +120,7 @@ type tcpClient struct {
 
 func (t *tcpClient) Type() string { return TypeTCP }
 
-func (t *tcpClient) Config() interface{} { return &t.config }
+func (t *tcpClient) Config() any { return &t.config }
 
 func (t *tcpClient) Upstream() Client { return nil }
 
@@ -150,7 +143,7 @@ type tcpDialer struct {
 
 func (td *tcpDialer) Client() Client { return td.client }
 
-func (td *tcpDialer) Underlying() interface{} { return td.Dialer }
+func (td *tcpDialer) Underlying() any { return td.Dialer }
 
 func (td *tcpDialer) Dial(network string, address string) (conn net.Conn, err error) {
 	conn, err = td.Dialer.Dial(network, address)

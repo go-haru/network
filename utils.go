@@ -6,11 +6,11 @@ import (
 	"time"
 )
 
-type duration int64
+type Duration int64
 
-func (d *duration) Duration() time.Duration { return time.Duration(*d) }
+func (d *Duration) Duration() time.Duration { return time.Duration(*d) }
 
-func (d *duration) UnmarshalJSON(rawBytes []byte) (err error) {
+func (d *Duration) UnmarshalJSON(rawBytes []byte) (err error) {
 	var valParsed time.Duration
 	if len(rawBytes) > 0 && rawBytes[0] == '"' {
 		var valText string
@@ -25,12 +25,12 @@ func (d *duration) UnmarshalJSON(rawBytes []byte) (err error) {
 			return err
 		}
 	}
-	*d = duration(valParsed)
+	*d = Duration(valParsed)
 	return nil
 }
 
-func (d *duration) UnmarshalYAML(unmarshal func(interface{}) error) (err error) {
-	var v interface{}
+func (d *Duration) UnmarshalYAML(unmarshal func(any) error) (err error) {
+	var v any
 	if err = unmarshal(&v); err != nil {
 		return err
 	}

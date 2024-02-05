@@ -3,29 +3,27 @@ package network
 import (
 	"context"
 	"net"
-	"time"
 )
 
-const (
-	TypeUDP = "udp"
-
-	UDPDefaultKeepAliveInterval = time.Second * 15
-)
+const TypeUDP = "udp"
 
 // ============================== Server ==============================
 
 type UDPServerConfig struct {
-	EnableKeepAlive   bool     `json:"enable_keep_alive"`
-	KeepAliveInterval duration `json:"keep_alive_interval"`
+	KeepAliveInterval Duration `json:"keep_alive_interval"`
 }
 
 func (tc *UDPServerConfig) applyToListenConfig(lc *net.ListenConfig) error {
-	if tc.EnableKeepAlive {
-		lc.KeepAlive = fallback(tc.KeepAliveInterval.Duration(), UDPDefaultKeepAliveInterval)
-	} else {
-		lc.KeepAlive = -1
+	if keepAliveDuration := tc.KeepAliveInterval.Duration(); keepAliveDuration > 0 {
+		lc.KeepAlive = keepAliveDuration // enable
+	} else if keepAliveDuration < 0 {
+		lc.KeepAlive = -1 // disable
 	}
 	return nil
+}
+
+func NewUDPServer(cfg UDPServerConfig, addr string) Server {
+	return &udpServer{config: cfg, addr: NewAddr(TypeUDP, addr)}
 }
 
 type udpServer struct {
@@ -37,7 +35,7 @@ func (u *udpServer) Type() string { return TypeUDP }
 
 func (u *udpServer) Addr() Addr { return u.addr }
 
-func (u *udpServer) Config() interface{} { return &u.config }
+func (u *udpServer) Config() any { return &u.config }
 
 func (u *udpServer) Upstream() Server { return nil }
 
@@ -69,24 +67,23 @@ type udpPacketListener struct {
 
 func (ul *udpPacketListener) Addr() net.Addr { return &ul.server.addr }
 
-func (ul *udpPacketListener) Underlying() interface{} { return ul.UDPConn }
+func (ul *udpPacketListener) Underlying() any { return ul.UDPConn }
 
 // ============================== Client ==============================
 
 type UDPClientConfig struct {
-	EnableKeepAlive   bool     `json:"enable_keep_alive"`
-	KeepAliveInterval duration `json:"keep_alive_interval"`
-	StackFallbackGap  duration `json:"stack_fallback_gap"`
-	TimeoutDuration   duration `json:"dial_timeout"`
+	KeepAliveInterval Duration `json:"keep_alive_interval"`
+	StackFallbackGap  Duration `json:"stack_fallback_gap"`
+	TimeoutDuration   Duration `json:"dial_timeout"`
 	LocalNetwork      string   `json:"local_network"`
 	LocalAddress      string   `json:"local_address"`
 }
 
 func (uc *UDPClientConfig) applyToDialer(dialer *net.Dialer) error {
-	if uc.EnableKeepAlive {
-		dialer.KeepAlive = uc.KeepAliveInterval.Duration()
-	} else {
-		dialer.KeepAlive = -1
+	if keepAliveDuration := uc.KeepAliveInterval.Duration(); keepAliveDuration > 0 {
+		dialer.KeepAlive = keepAliveDuration // enable
+	} else if keepAliveDuration < 0 {
+		dialer.KeepAlive = -1 // disable
 	}
 	dialer.Timeout = uc.TimeoutDuration.Duration()
 	dialer.FallbackDelay = uc.StackFallbackGap.Duration()
@@ -97,10 +94,10 @@ func (uc *UDPClientConfig) applyToDialer(dialer *net.Dialer) error {
 }
 
 func (uc *UDPClientConfig) applyToListenConfig(lc *net.ListenConfig) error {
-	if uc.EnableKeepAlive {
-		lc.KeepAlive = uc.KeepAliveInterval.Duration()
-	} else {
-		lc.KeepAlive = -1
+	if keepAliveDuration := uc.KeepAliveInterval.Duration(); keepAliveDuration > 0 {
+		lc.KeepAlive = keepAliveDuration // enable
+	} else if keepAliveDuration < 0 {
+		lc.KeepAlive = -1 // disable
 	}
 	return nil
 }
@@ -111,7 +108,7 @@ type udpClient struct {
 
 func (u *udpClient) Type() string { return TypeUDP }
 
-func (u *udpClient) Config() interface{} { return &u.config }
+func (u *udpClient) Config() any { return &u.config }
 
 func (u *udpClient) Upstream() Client { return nil }
 
@@ -159,4 +156,4 @@ type udpDialer struct {
 
 func (ud *udpDialer) Client() Client { return ud.client }
 
-func (ud *udpDialer) Underlying() interface{} { return ud.Dialer }
+func (ud *udpDialer) Underlying() any { return ud.Dialer }

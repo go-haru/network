@@ -8,9 +8,8 @@ import (
 )
 
 var (
-	ErrUnsupportedProtocol   = errors.New("unsupported network")
-	ErrUnsupportedUpstream   = errors.New("unsupported upstream")
-	ErrInvalidProtocolFormat = errors.New("invalid protocol format")
+	ErrUnsupportedProtocol = errors.New("unsupported network")
+	ErrUnsupportedUpstream = errors.New("unsupported upstream")
 )
 
 type Addr struct {
@@ -27,7 +26,7 @@ func (a Addr) String() string { return a.AddressStr }
 type Server interface {
 	Type() string
 	Addr() Addr
-	Config() interface{}
+	Config() any
 	Upstream() Server
 	ListenPacket(ctx context.Context) (packetConn PacketConn, err error)
 	ListenContext(ctx context.Context) (listener Listener, err error)
@@ -35,7 +34,7 @@ type Server interface {
 
 type Listener interface {
 	Server() Server
-	Underlying() interface{}
+	Underlying() any
 	net.Listener
 }
 
@@ -54,7 +53,7 @@ type PacketListener interface {
 }
 
 type PacketConn interface {
-	Underlying() interface{}
+	Underlying() any
 	net.PacketConn
 }
 
@@ -66,7 +65,7 @@ type ListenerMultiplexed interface {
 
 type Client interface {
 	Type() string
-	Config() interface{}
+	Config() any
 	Upstream() Client
 	Dialer(ctx context.Context) (Dialer, error)
 	Resolve(network, address string) (net.Addr, error)
@@ -79,7 +78,7 @@ type NativeDialer interface {
 
 type Dialer interface {
 	Client() Client
-	Underlying() interface{}
+	Underlying() any
 	NativeDialer
 }
 
